@@ -103,11 +103,16 @@ server.start();
     expiresIn: 60000
   },
 
-  //http://hapijs.com/api#serverstatename-options
+  // http://hapijs.com/api#serverstatename-options
   cookie: {
     isSecure: true,
     isHttpOnly: true
-  }
+  },
+
+  // An array of regular expressions or strings to match.
+  // The matches will tested against `request.url.path`. If any of the
+  // matches succeed, session processing will not be performed.
+  ignorePaths: []
 }
 ```
 
