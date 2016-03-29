@@ -15,7 +15,8 @@ const defaultOptions = {
     isHttpOnly: true
   },
   name: 'easySession',
-  size: 16
+  size: 16,
+  ignorePaths: []
 };
 
 function SessionPlugin(server, options) {
@@ -81,8 +82,25 @@ SessionPlugin.prototype.isValidSessionId = function isValidSessionId(sessionId) 
   return isValid;
 };
 
+SessionPlugin.prototype.shouldIgnore = function shouldIgnore(path) {
+  for (let p of this.opts.ignorePaths) {
+    if (p instanceof RegExp && p.test(path)) {
+      return true;
+    }
+    if (p === path) {
+      return true;
+    }
+  }
+  return false;
+};
+
 SessionPlugin.prototype.onPreAuth = function onPreAuth(request, reply) {
   debug('==== onPreAuth ====');
+  if (this.shouldIgnore(request.url.path)) {
+    debug('ignoring path: %s', request.url.path);
+    request.easySessionIgnore = true;
+    return reply.continue();
+  }
   const sessionId = request.state[this.opts.name];
   debug('sessionId: %s', sessionId);
   if (!sessionId) {
@@ -117,6 +135,10 @@ SessionPlugin.prototype.onPreAuth = function onPreAuth(request, reply) {
 
 SessionPlugin.prototype.onPreResponse = function onPreResponse(request, reply) {
   debug('==== onPreResponse ====');
+  if (request.easySessionIgnore) {
+    debug('ignoring path: %s', request.url.path);
+    return reply.continue();
+  }
   let sessionId = request.easySessionId;
   debug('sesion id: %s', sessionId);
   if (!sessionId) {

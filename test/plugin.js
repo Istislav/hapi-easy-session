@@ -25,6 +25,14 @@ function createServer(options) {
     }
   });
 
+  server.route({
+    method: 'GET',
+    path: '/foo',
+    handler: function fooRoute(request, reply) {
+      reply('foo');
+    }
+  });
+
   const plugins = [{
     register: plugin,
     options: options
@@ -67,6 +75,44 @@ function injectWithCookieAndvalue(server) {
   return injectWithValue(server)
     .then((res) => inject(server, {cookie: extractCookie(res), value: '2'}));
 }
+
+context('hapi-easy-session', function easySession() {
+  it('should ignore specified regex paths', (done) => {
+    createServer({expiresIn: 1000, key: 'test', ignorePaths: [/\/foo/]})
+      .then((server) => {
+        return server.inject({url: '/foo'});
+      })
+      .then((res) => {
+        expect(res.request.session).to.not.exist;
+        expect(res.result).to.equal('foo');
+        done();
+      });
+  });
+  
+  it('should ignore specified string paths', (done) => {
+    createServer({expiresIn: 1000, key: 'test', ignorePaths: ['/foo']})
+      .then((server) => {
+        return server.inject({url: '/foo'});
+      })
+      .then((res) => {
+        expect(res.request.session).to.not.exist;
+        expect(res.result).to.equal('foo');
+        done();
+      });
+  });
+  
+  it('should ignore specified mixed paths', (done) => {
+    createServer({expiresIn: 1000, key: 'test', ignorePaths: [/\/bar/, '/foo']})
+      .then((server) => {
+        return server.inject({url: '/foo'});
+      })
+      .then((res) => {
+        expect(res.request.session).to.not.exist;
+        expect(res.result).to.equal('foo');
+        done();
+      });
+  });
+});
 
 context('when encryption key is set', function keyTests() {
   context('and no cookie present', () => {
