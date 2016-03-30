@@ -154,7 +154,7 @@ SessionPlugin.prototype.onPreResponse = function onPreResponse(request, reply) {
   }
 
   debug('saving session to cache: %j', request.session);
-  this.cache.set(sessionId, request.session, null, (err) => {
+  this.cache.set(sessionId, request.session || {}, null, (err) => {
     debug('session saved to cache. err: %j', err);
     (err) ? reply(Boom.wrap(err, 503)) : reply.continue();
   });
