@@ -29,7 +29,7 @@ store operation on every request.
 ## Install
 
 ```bash
-$ npm install --save hapi-server-session
+$ npm install --save hapi-easy-session
 ```
 
 ## Example:
