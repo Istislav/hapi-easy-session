@@ -1,6 +1,6 @@
 {
   "name": "hapi-easy-session",
-  "version": "0.2.2",
+  "version": "1.0.0",
   "description": "An easy to use server session plugin for Hapi",
   "main": "session.js",
   "scripts": {
