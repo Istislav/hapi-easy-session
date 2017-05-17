@@ -112,7 +112,12 @@ server.start();
   // An array of regular expressions or strings to match.
   // The matches will tested against `request.url.path`. If any of the
   // matches succeed, session processing will not be performed.
-  ignorePaths: []
+  ignorePaths: [],
+
+  // An instance of a logger that supports the Log4j interface. The plugin
+  // logs everything at the `trace` level. The Pino logger is the recommended
+  // logger: https://npm.im/pino
+  logger: {}
 }
 ```
 
