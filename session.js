@@ -1,8 +1,12 @@
 'use strict'
 
 const crypto = require('crypto')
-const debug = require('debug')('hapi-easy-session')
 const Boom = require('boom')
+let log = require('abstract-logging')
+
+log.child = function () {
+  return log
+}
 
 const defaultOptions = {
   algorithm: 'sha256',
@@ -37,7 +41,7 @@ function SessionPlugin (server, options) {
 }
 
 SessionPlugin.prototype.createSessionId = function createSessionId (randomBytes, expiresAt) {
-  debug('creating session id')
+  log.trace('creating session id')
   const sessionId = [randomBytes || crypto.randomBytes(this.opts.size)]
   if (this.opts.expiresIn) {
     const buffer = Buffer.alloc(8)
@@ -52,17 +56,17 @@ SessionPlugin.prototype.createSessionId = function createSessionId (randomBytes,
     sessionId.push(hmac.digest())
   }
   const id = encodeURIComponent(Buffer.concat(sessionId).toString('base64'))
-  debug('session id: %s', id)
+  log.trace('session id: %s', id)
   return id
 }
 
 SessionPlugin.prototype.isValidSessionId = function isValidSessionId (sessionId) {
-  debug('verifying session id: %s', sessionId)
+  log.trace('verifying session id: %s', sessionId)
   const minSize = (this.opts.expiresIn) ? this.opts.size + 8 : this.opts.size
   const decodedSessionId = Buffer.from(decodeURIComponent(sessionId), 'base64')
 
   if (decodedSessionId.length < minSize) {
-    debug('decoded session id length too short')
+    log.trace('decoded session id length too short')
     return false
   }
 
@@ -71,13 +75,13 @@ SessionPlugin.prototype.isValidSessionId = function isValidSessionId (sessionId)
   if (this.opts.expiresIn) {
     expiresAt = decodedSessionId.readDoubleBE(this.opts.size)
     if (Date.now() >= expiresAt) {
-      debug('decoded session id has expired')
+      log.trace('decoded session id has expired')
       return false
     }
   }
 
   const isValid = sessionId === this.createSessionId(randomBytes, expiresAt)
-  debug('session id is valid: %s', isValid)
+  log.trace('session id is valid: %s', isValid)
   return isValid
 }
 
@@ -94,74 +98,79 @@ SessionPlugin.prototype.shouldIgnore = function shouldIgnore (path) {
 }
 
 SessionPlugin.prototype.onPreAuth = function onPreAuth (request, reply) {
-  debug('==== onPreAuth ====')
+  log.trace('=== onPreAuth ===')
   if (this.shouldIgnore(request.url.path)) {
-    debug('ignoring path: %s', request.url.path)
+    log.trace('ignoring path: %s', request.url.path)
     request.easySessionIgnore = true
     return reply.continue()
   }
   const sessionId = request.state[this.opts.name]
-  debug('sessionId: %s', sessionId)
+  log.trace('sessionId: %s', sessionId)
   if (!sessionId) {
-    debug('creating new session')
+    log.trace('creating new session')
     request.session = {}
     return reply.continue()
   }
 
   if (!this.isValidSessionId(sessionId)) {
-    debug('removing session')
+    log.trace('removing session')
     reply.unstate(this.opts.name)
     request.session = {}
     return reply.continue()
   }
 
-  debug('setting internal easySessionId variable')
+  log.trace('setting internal easySessionId variable')
   request.easySessionId = sessionId
 
-  debug('getting session from cache: %s', request.easySessionId)
+  log.trace('getting session from cache: %s', request.easySessionId)
   this.cache.get(sessionId, (err, value, cached) => {
-    debug('cache value: %j ~~ %j', value, cached)
+    log.trace('cache value: %j ~~ %j', value, cached)
     if (err) {
-      debug('could not retrieve session from cache: %j', err)
+      log.trace('could not retrieve session from cache: %j', err)
       return reply(Boom.wrap(err, 503))
     }
 
     request.session = value || {}
-    debug('session from cache: %j', request.session)
+    log.trace('session from cache: %j', request.session)
     return reply.continue()
   })
 }
 
 SessionPlugin.prototype.onPreResponse = function onPreResponse (request, reply) {
-  debug('==== onPreResponse ====')
+  log.trace('=== onPreResponse ===')
   if (request.easySessionIgnore) {
-    debug('ignoring path: %s', request.url.path)
+    log.trace('ignoring path: %s', request.url.path)
     return reply.continue()
   }
   let sessionId = request.easySessionId
-  debug('sesion id: %s', sessionId)
+  log.trace('sesion id: %s', sessionId)
   if (!sessionId) {
     try {
       sessionId = this.createSessionId()
     } catch (err) {
-      debug('could not generate session id: %j', err)
+      log.trace('could not generate session id: %j', err)
       reply(Boom.wrap(err, 500))
       return
     }
-    debug('setting session id cookie: %s', sessionId)
+    log.trace('setting session id cookie: %s', sessionId)
     reply.state(this.opts.name, sessionId)
   }
 
-  debug('saving session to cache: %j', request.session)
+  log.trace('saving session to cache: %j', request.session)
   this.cache.set(sessionId, request.session || {}, null, (err) => {
-    debug('session saved to cache. err: %j', err)
+    log.trace('session saved to cache. err: %j', err)
     if (!err) return reply.continue()
     reply(Boom.wrap(err, 503))
   })
 }
 
 function plugin (server, options, next) {
-  debug('instantiating new easy-session plugin: %j', options)
+  if (options && options.logger && options.logger.trace) {
+    log = (options.logger.child)
+      ? options.logger.child({plugin: 'hapi-easy-session'})
+      : options.logger
+  }
+  log.trace('instantiating new easy-session plugin: %j', options)
   const sessionPlugin = new SessionPlugin(server, options)
   server.ext('onPreAuth', sessionPlugin.onPreAuth.bind(sessionPlugin))
   server.ext('onPreResponse', sessionPlugin.onPreResponse.bind(sessionPlugin))
