@@ -4,8 +4,13 @@
   "description": "An easy to use server session plugin for Hapi",
   "main": "session.js",
   "scripts": {
-    "test": "mocha --ui bdd test"
+    "test": "tap --no-cov 'test/**/*.test.js'",
+    "lint": "standard | snazzy"
   },
+  "precommit": [
+    "lint",
+    "test"
+  ],
   "keywords": [
     "hapi",
     "session",
@@ -25,13 +30,11 @@
     "url": "https://github.com/jsumners/hapi-easy-session.git"
   },
   "devDependencies": {
-    "chai": "^3.5.0",
-    "gulp": "^3.9.1",
-    "gulp-jscs": "^3.0.2",
     "hapi": "^13.0.0",
-    "jscs": "^2.11.0",
-    "jscs-preset-jsumners": "^0.1.0",
-    "mocha": "^2.4.5"
+    "pre-commit": "^1.2.2",
+    "snazzy": "^7.0.0",
+    "standard": "^10.0.2",
+    "tap": "^10.3.2"
   },
   "dependencies": {
     "boom": "^3.1.2",
