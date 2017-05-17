@@ -127,7 +127,7 @@ SessionPlugin.prototype.onPreAuth = function onPreAuth (request, reply) {
     log.trace('cache value: %j ~~ %j', value, cached)
     if (err) {
       log.trace('could not retrieve session from cache: %j', err)
-      return reply(Boom.wrap(err, 503))
+      return reply(err.isBoom ? err : Boom.wrap(err, 503))
     }
 
     request.session = value || {}
@@ -149,7 +149,7 @@ SessionPlugin.prototype.onPreResponse = function onPreResponse (request, reply) 
       sessionId = this.createSessionId()
     } catch (err) {
       log.trace('could not generate session id: %j', err)
-      reply(Boom.wrap(err, 500))
+      reply(err.isBoom ? err : Boom.wrap(err, 500))
       return
     }
     log.trace('setting session id cookie: %s', sessionId)
@@ -160,7 +160,7 @@ SessionPlugin.prototype.onPreResponse = function onPreResponse (request, reply) 
   this.cache.set(sessionId, request.session || {}, null, (err) => {
     log.trace('session saved to cache. err: %j', err)
     if (!err) return reply.continue()
-    reply(Boom.wrap(err, 503))
+    reply(err.isBoom ? err : Boom.wrap(err, 503))
   })
 }
 
